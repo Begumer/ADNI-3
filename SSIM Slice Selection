@@ -1,6 +1,6 @@
 import cv2
 import os
-from google.colab.patches import cv2_imshow  # cv2.imshow yerine kullanılacak
+from google.colab.patches import cv2_imshow  # Google Colab için
 
 # MRI dilimlerinin bulunduğu dizin
 mri_slices_dir = "/content/drive/MyDrive/CN_denemem"
@@ -8,32 +8,35 @@ mri_slices_dir = "/content/drive/MyDrive/CN_denemem"
 # Dizindeki tüm dosyaları al (sadece dosyalar, klasörler hariç)
 slice_files = sorted([f for f in os.listdir(mri_slices_dir) if os.path.isfile(os.path.join(mri_slices_dir, f))])
 
-# En uzun kenara sahip dilimi bulmak için başlangıç değerlerini ayarla
-max_size = 0
-max_size_image = None
-max_size_image_path = ""
+# En fazla kenara sahip dilimi bulmak için başlangıç değerlerini ayarla
+max_edges = 0
+best_edge_image = None
+best_edge_image_path = ""
 
 # Her dosyayı kontrol et
 for slice_file in slice_files:
     slice_path = os.path.join(mri_slices_dir, slice_file)
-    img = cv2.imread(slice_path, cv2.IMREAD_GRAYSCALE)  # Görüntüyü gri tonlamalı olarak yükle
+    img = cv2.imread(slice_path, cv2.IMREAD_GRAYSCALE)
+    
     if img is not None:
-        img_size = max(img.shape)  # Görüntünün uzun kenarını hesapla
-        if img_size > max_size:
-            max_size = img_size
-            max_size_image = img
-            max_size_image_path = slice_path
+        # Canny edge detection uygula
+        edges = cv2.Canny(img, threshold1=100, threshold2=200)
 
-# En uzun kenara sahip dilimi ekrana bas
-if max_size_image is not None:
-    print(f"The largest image is from: {max_size_image_path} with size: {max_size_image.shape}")
+        # Kenar (beyaz piksel) sayısını hesapla
+        edge_count = cv2.countNonZero(edges)
 
-    # Görüntüyü ekrana bas (Google Colab için)
-    cv2_imshow(max_size_image)
+        if edge_count > max_edges:
+            max_edges = edge_count
+            best_edge_image = img
+            best_edge_image_path = slice_path
 
-    # İsteğe bağlı olarak, görüntüyü kaydedebilirsin
-    output_path = "largest_slice.png"
-    cv2.imwrite(output_path, max_size_image)
+# En fazla kenar içeren görüntüyü göster
+if best_edge_image is not None:
+    print(f"The image with the most edges is from: {best_edge_image_path} with edge count: {max_edges}")
+    cv2_imshow(best_edge_image)
+
+    # Görüntüyü kaydetmek istersen
+    output_path = "most_edges_slice.png"
+    cv2.imwrite(output_path, best_edge_image)
 else:
     print("No valid slices found in the directory.")
-
